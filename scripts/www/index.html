@@ -1,11 +1,813 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        PakePlus
-    </body>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>xylin的VIP视频解析聚合站</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --card: #ffffff;
+      --muted: #6b7280;
+      --text: #0f172a;
+      --accent: #16a34a;
+      --accent-2: #0284c7;
+      --danger: #dc2626;
+      --warn: #f59e0b;
+      --border: #e2e8f0;
+      --radius: 12px;
+      --shadow: 0 18px 60px rgba(15, 23, 42, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "DM Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 15%, rgba(2,132,199,0.12), transparent 32%),
+        radial-gradient(circle at 75% 12%, rgba(22,163,74,0.14), transparent 26%),
+        radial-gradient(circle at 40% 70%, rgba(56,189,248,0.08), transparent 28%),
+        var(--bg);
+      padding: 28px;
+    }
+    a { color: var(--accent-2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .shell { max-width: 1100px; margin: 0 auto; background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 22px 22px 30px; box-shadow: var(--shadow); }
+    .header { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .title { font-size: clamp(22px, 3vw, 30px); margin: 0; letter-spacing: 0.4px; color: #0b1224; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: rgba(2,132,199,0.08); color: var(--accent-2); border: 1px solid rgba(2,132,199,0.2); font-weight: 600; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; box-shadow: 0 10px 30px rgba(15,23,42,0.06); }
+    .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); margin-top: 14px; }
+    label { font-size: 14px; color: var(--muted); margin-bottom: 6px; display: block; }
+    select, input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: #f8fafc; color: var(--text); outline: none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.8); }
+    select:focus, input:focus { border-color: var(--accent-2); box-shadow: 0 0 0 2px rgba(2,132,199,0.16); }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    button { cursor: pointer; border: none; border-radius: 10px; padding: 12px 18px; font-weight: 700; transition: transform 0.08s ease, box-shadow 0.12s ease, opacity 0.12s; letter-spacing: 0.2px; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    button:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn-primary { background: linear-gradient(135deg, #22c55e, #16a34a); color: #f8fafc; box-shadow: 0 10px 25px rgba(22,163,74,0.22); }
+    .btn-ghost { background: #f8fafc; color: var(--muted); border: 1px solid var(--border); }
+    .btn-accent { background: linear-gradient(135deg, #38bdf8, #0284c7); color: #f8fafc; box-shadow: 0 10px 25px rgba(2,132,199,0.25); }
+    .btn-danger { background: linear-gradient(135deg, #f87171, #ef4444); color: #fff; }
+    .player-box { position: relative; width: 100%; padding-top: 56.25%; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); background: #0b1222; margin-top: 18px; box-shadow: 0 20px 60px rgba(15,23,42,0.1); }
+    iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+    .player-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.32); color: #e2e8f0; font-weight: 700; letter-spacing: 0.2px; backdrop-filter: blur(2px); transition: opacity 0.2s ease; }
+    .player-overlay.hide { opacity: 0; pointer-events: none; }
+    .player-bubble { background: rgba(15,23,42,0.7); padding: 14px 16px; border-radius: 12px; display: inline-flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
+    .spinner { width: 16px; height: 16px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.24); border-top-color: #38bdf8; animation: spin 0.8s linear infinite; }
+    .player-msg.ok { color: #4ade80; }
+    .player-msg.warn { color: #fbbf24; }
+    .player-msg.error { color: #f87171; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .note { font-size: 13px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+    .status-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .chip { padding: 6px 10px; border-radius: 999px; font-size: 12px; border: 1px solid transparent; display: inline-flex; align-items: center; gap: 6px; background: #eef2f7; color: #0f172a; }
+    .chip.ok { background: rgba(34,197,94,0.14); color: #166534; border-color: rgba(34,197,94,0.22); }
+    .chip.warn { background: rgba(245,158,11,0.14); color: #92400e; border-color: rgba(245,158,11,0.22); }
+    .chip.bad { background: rgba(248,113,113,0.14); color: #b91c1c; border-color: rgba(248,113,113,0.25); }
+    .chip.idle { background: #eef2f7; color: #6b7280; border-color: #e5e7eb; }
+    .drawer { position: fixed; inset: 0; display: none; justify-content: flex-end; background: rgba(0,0,0,0.38); z-index: 999; }
+    .drawer.active { display: flex; }
+    .drawer-panel { width: min(440px, 96vw); height: 100%; background: #ffffff; border-left: 1px solid var(--border); padding: 16px; overflow-y: auto; box-shadow: -20px 0 50px rgba(15,23,42,0.08); }
+    .row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; }
+    .row + .row { margin-top: 8px; }
+    .row .name { font-size: 14px; color: #0f172a; }
+    .status { padding: 6px 10px; border-radius: 999px; font-size: 12px; border: 1px solid transparent; }
+    .status.reachable { background: rgba(34,197,94,0.15); color: #166534; border-color: rgba(34,197,94,0.35); }
+    .status.checking { background: rgba(2,132,199,0.12); color: #075985; border-color: rgba(2,132,199,0.24); }
+    .status.timeout { background: rgba(245,158,11,0.15); color: #92400e; border-color: rgba(245,158,11,0.35); }
+    .status.unreachable { background: rgba(248,113,113,0.15); color: #991b1b; border-color: rgba(248,113,113,0.4); }
+    .status.idle { background: #eef2f7; color: #6b7280; border-color: #e5e7eb; }
+    .footer { margin-top: 18px; color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .pill { background: #f8fafc; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); color: #475569; }
+    .platforms { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .platform { padding: 8px 12px; border-radius: 12px; background: #f1f5f9; border: 1px solid #e2e8f0; color: #0f172a; font-weight: 600; box-shadow: inset 0 1px 0 rgba(255,255,255,0.9); }
+    .available { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .chip-select { padding: 8px 12px; border-radius: 10px; border: 1px solid #e2e8f0; background: #eef2f7; color: #0f172a; font-weight: 700; cursor: pointer; transition: all 0.12s ease; }
+    .chip-select:hover { border-color: var(--accent-2); box-shadow: 0 6px 16px rgba(2,132,199,0.15); transform: translateY(-1px); }
+    .chip-select.active { background: rgba(2,132,199,0.14); color: #075985; border-color: rgba(2,132,199,0.35); }
+    .preview-panel { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+    .preview-options { display: flex; flex-wrap: wrap; gap: 8px; }
+    .preview-group { display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; font-weight: 700; color: #0f172a; box-shadow: inset 0 1px 0 rgba(255,255,255,0.85); cursor: pointer; transition: all 0.12s ease; }
+    .preview-group:hover { border-color: var(--accent-2); box-shadow: 0 6px 16px rgba(2,132,199,0.12); transform: translateY(-1px); }
+    .preview-group.active { background: rgba(2,132,199,0.14); color: #075985; border-color: rgba(2,132,199,0.35); }
+    .preview-group input { width: auto; }
+    .preview-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .preview-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+    .preview-item { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px; box-shadow: 0 10px 24px rgba(15,23,42,0.06); }
+    .preview-title { font-weight: 800; color: #0f172a; }
+    .preview-frame { position: relative; padding-top: 56.25%; border-radius: 10px; overflow: hidden; background: #0b1222; margin-top: 8px; border: 1px solid var(--border); }
+    .preview-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+    .preview-pill { padding: 6px 10px; border-radius: 999px; font-size: 12px; border: 1px solid transparent; background: #eef2f7; color: #0f172a; }
+    .preview-pill.ok { background: rgba(34,197,94,0.14); color: #166534; border-color: rgba(34,197,94,0.25); }
+    .preview-pill.warn { background: rgba(245,158,11,0.16); color: #92400e; border-color: rgba(245,158,11,0.26); }
+    .preview-pill.bad { background: rgba(248,113,113,0.18); color: #991b1b; border-color: rgba(248,113,113,0.3); }
+    .btn-small { padding: 8px 12px; font-size: 13px; }
+    .custom-grid { display: grid; gap: 10px; grid-template-columns: 1.2fr 2fr auto; align-items: center; margin-top: 10px; }
+    .custom-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; }
+    .custom-row .name { font-weight: 700; color: #0f172a; }
+    .custom-row .url { color: #6b7280; font-size: 13px; }
+    .custom-row button { padding: 8px 10px; }
+    .hide { display: none; }
+    @media (max-width: 640px) {
+      body { padding: 16px; }
+      .actions { flex-direction: column; }
+      .header { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="header">
+      <div>
+        <p class="badge">纯 HTML / 无需构建</p>
+        <h1 class="title">✧xylin的VIP视频解析聚合站✧(≖◡≖✿</h1>
+      </div>
+      <div class="pill" id="current-year"></div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <label for="parser">选择解析线路</label>
+        <select id="parser"></select>
+      </div>
+      <div class="card">
+        <label for="url">视频链接</label>
+        <input id="url" placeholder="粘贴要解析的视频地址" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="card hide" id="available-card" style="margin-top:12px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+        <span style="color:#0f172a; font-weight:700;">检测可用线路</span>
+        <span class="note" style="margin-top:0;">检测后点击即切换当前线路</span>
+      </div>
+      <div id="available-list" class="available"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-primary" id="play-btn">播放</button>
+      <button class="btn-ghost" id="clear-btn" style="background:#ac3904; color:#f9fafb; border:none;">清空</button>
+      <button class="btn-ghost" id="copy-btn">复制播放直链</button>
+      <button class="btn-accent" id="check-btn">检测解析源</button>
+      <button class="btn-ghost" id="drawer-close" style="display:none;">关闭检测面板</button>
+    </div>
+    <p class="note">温馨提示：解析不保证 100% 可用；如遇广告属于第三方接口自带内容；若解析失败请切换线路。</p>
+
+    <div class="card" style="margin-top:12px;" id="preview-card">
+      <div class="preview-head">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span style="color:#0f172a; font-weight:800;">联合播放小窗预览</span>
+          <span class="note" style="margin:0;">多条线路同时小窗播放，预览后再决定主播放源</span>
+        </div>
+        <button class="btn-ghost" id="preview-toggle" style="background:#DBEEF7; color:#075985; border:none;">展开</button>
+      </div>
+      <div class="preview-panel hide" id="preview-panel">
+        <div class="preview-meta">
+          <span class="note" style="margin:0;">选择一组（每组 6 条） <span id="preview-count">0/0 组</span></span>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <span class="note" style="margin:0;">建议先检测可用</span>
+            <button class="btn-accent btn-small" id="preview-start">开始小窗预览</button>
+          </div>
+        </div>
+        <div id="preview-options" class="preview-options"></div>
+        <div id="preview-grid" class="preview-grid"></div>
+      </div>
+    </div>
+
+    <div class="player-box">
+      <iframe id="player" src="about:blank" allowfullscreen allowtransparency></iframe>
+      <div class="player-overlay hide" id="player-overlay">
+        <div class="player-bubble">
+          <div class="spinner" aria-hidden="true"></div>
+          <div class="player-msg" id="player-status-text">正在解析，请稍候...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-bar" id="status-summary"></div>
+
+    <div class="card" style="margin-top:12px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+        <span style="color:#0f172a; font-weight:700;">常见站点直达</span>
+        <span class="note" style="margin-top:0;">复制官方链接后粘贴即可播放</span>
+      </div>
+      <div class="platforms">
+        <a class="platform" href="https://v.qq.com" target="_blank" rel="noreferrer">腾讯视频</a>
+        <a class="platform" href="https://www.iqiyi.com" target="_blank" rel="noreferrer">爱奇艺</a>
+        <a class="platform" href="https://www.youku.com" target="_blank" rel="noreferrer">优酷</a>
+        <a class="platform" href="https://www.mgtv.com" target="_blank" rel="noreferrer">芒果TV</a>
+        <a class="platform" href="https://www.bilibili.com" target="_blank" rel="noreferrer">哔哩哔哩</a>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+        <span style="color:#0f172a; font-weight:700;">自定义解析源（本地保存）</span>
+        <span class="note" style="margin-top:0;">格式示例： https://demo.com/jx?url=</span>
+      </div>
+      <div class="custom-grid">
+        <input id="custom-name" placeholder="名称，如 自建线路" autocomplete="off" />
+        <input id="custom-url" placeholder="解析接口前缀，需包含 http(s)" autocomplete="off" />
+        <button class="btn-primary" id="custom-add">添加</button>
+      </div>
+      <div id="custom-list" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="drawer" id="drawer">
+      <div class="drawer-panel">
+        <div class="header" style="margin-bottom:12px;">
+          <h3 style="margin:0;">接口检测</h3>
+          <button class="btn-ghost" id="drawer-close-2">关闭</button>
+        </div>
+        <p class="note">检测受跨域限制，仅供参考。可用(reachable) 表示接口无跨域阻挡但不代表必然可播。</p>
+        <div id="parser-list"></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span class="note" style="margin:0;">由 xylin 开发 · 仅供学习交流，请勿用于非法用途</span>
+      <span class="pill">(◍•ᴗ•◍)  保持良好网络习惯  ✧٩(ˊωˋ*)و✧</span>
+    </div>
+  </div>
+
+  <script>
+    const baseOptions = [
+      { label: '8合1聚合源【超推荐】', value: 'https://jiexi.site/?url=' },
+      { label: '虾米解析【推荐】', value: 'https://jx.xmflv.com/?url=' },
+      { label: '8090g解析【推荐】', value: 'https://www.8090g.cn/?url=' },
+      { label: '七哥【推荐】', value: 'https://jx.nnxv.cn/tv.php?url=' },
+      { label: 'mmkv【推荐】', value: 'https://jx.mmkv.cn/tv.php?url=' },
+      { label: 'CK【推荐】', value: 'https://www.ckplayer.vip/jiexi/?url=' },
+      { label: '盘古🍃【推荐】', value: 'https://www.pangujiexi.com/pangu/?url=' },
+      { label: 'ckplayer【推荐】', value: 'https://www.ckplayer.vip/jiexi/?url=]' },
+      { label: 'ppflv【推荐】', value: 'https://jx.ppflv.com/?url=' },
+      { label: 'im1907解析【推荐】', value: 'https://im1907.top/?jx=' },
+      { label: '冰豆【推荐】', value: 'https://bd.jx.cn/?url=' },
+      { label: '八戒解析', value: 'https://jx.m3u8.tv/jiexi/?url=' },
+      { label: '悟空解析', value: 'https://bd.jx.cn/?url=' },
+      { label: '唐僧解析', value: 'https://jx.xmflv.cc/?url=' },
+      { label: '8090解析【备用】', value: 'https://www.8090g.cn/jiexi/?url=' },
+      { label: '1717云解析【备用】', value: 'https://www.1717yun.com/jx/ty.php?url=' },
+      { label: 'yparse 解析【备用】', value: 'https://jx.yparse.com/index.php?url=' },
+      { label: '爱豆解析【备用】', value: 'https://jx.aidouer.net/?url=' },
+      { label: 'OK 解析【备用】', value: 'https://okjx.cc/?url=' },
+      { label: '夜幕【备用】', value: 'https://www.yemu.xyz/?url=' },
+      { label: 'jsonplayer【备用】', value: 'https://jx.jsonplayer.com/player/?url=' },
+      { label: 'we-vip【备用】', value: 'https://jx.we-vip.com/?url=' },
+      { label: '598110【备用】', value: 'https://jx.598110.com/index.php?url=' },
+      { label: 'H8【备用】', value: 'https://www.h8jx.com/jiexi.php?url=' },
+      { label: '盘古2【备用】', value: 'https://www.pangujiexi.com/jiexi/?url=' },
+      { label: '剖云【备用】', value: 'https://www.pouyun.com/?url=' },
+      { label: '4K', value: 'https://jx.4kdv.com/?url=' },
+      { label: 'CK2', value: 'http://api.ckflv.cn/?url=' },
+      { label: 'CHok', value: 'https://www.gai4.com/?url=' },
+      { label: '量子', value: 'https://lziplayer.com/?url=' },
+      { label: '冰豆', value: 'https://api.qianqi.net/vip/?url=' },
+      { label: 'PM', value: 'https://www.playm3u8.cn/jiexi.php?url=' },
+      { label: '解析', value: 'https://ckmov.ccyjjd.com/ckmov/?url=' },
+      { label: '盘古', value: 'https://www.pangujiexi.cc/jiexi.php?url=' },
+      { label: 'MAO', value: 'https://www.mtosz.com/m3u8.php?url=' },
+      { label: '速更', value: 'https://wuxiezx.com/player/?url=' },
+      { label: '云解析🍃', value: 'https://yparse.ik9.cc/index.php?url=' },
+      { label: 'vip123kan', value: 'http://api.vip123kan.vip/?url=' },
+      { label: '芒果专用', value: 'https://jx.mangguo.tv/?url=' },
+      { label: '快车解析', value: 'https://jiexi.kczyapi.com/m3u8/?url=' },
+      { label: 'laisoyiba', value: 'https://laisoyiba.com/mov/s/?sv=3&url=' },
+      { label: 'rx2', value: 'http://rxjx.kuanjv.com/allm3u8.php?url=' },
+      { label: '52damu', value: 'https://jx.52damu.com/dmjx/jiexi.php?url=' },
+      { label: 'ckmov', value: 'https://www.ckmov.vip/api.php?url=' },
+      { label: 'ldjx', value: 'https://api.ldjx.cc/wp-api/getvodurl.php?token=1001&vid=' },
+      { label: '52jiexi', value: 'https://vip.52jiexi.top/?url=' },
+      { label: 'administra', value: 'https://www.administratorw.com/video.php?url=' },
+      { label: 'yangtu', value: 'https://jx.yangtu.top?url=' },
+      { label: 'mw0', value: 'https://jx.mw0.cc/?url=' },
+      { label: 'jiexi', value: 'https://jiexi.us/?url=' },
+      { label: 'jiejie', value: 'https://jiejie.uk/' },
+      { label: '60解析', value: 'http://60jx.com/?url=' },
+      { label: 'quankan', value: 'https://jx.quankan.app/?url=' },
+      { label: '思古', value: 'https://api.sigujx.com/?url=' },
+      { label: '久播', value: 'https://jx.jiubojx.com/vip.php?url=' },
+      { label: '智能', value: 'https://vip.kurumit3.top/?v=' },
+      { label: '诺诺', value: 'https://www.ckmov.com/?url=' },
+      { label: '高速接口1', value: 'https://jsap.attakids.com/?url=' },
+      { label: '懒懒', value: 'http://lanlan.ckflv.cn/?url=' },
+      { label: 'ckflv', value: 'http://lanlan.ckflv.cn/?url=]' },
+      { label: '4kdv', value: 'https://jx.4kdv.com/?url=]' },
+      { label: 'aidouer', value: 'https://jx.aidouer.net/?url=]' },
+      { label: 'kuanjv', value: 'http://rxjx.kuanjv.com/allm3u8.php?url=]' },   
+      { label: 'lziplayer', value: 'https://lziplayer.com/?url=]' },     
+      { label: 'pangujiexi', value: 'https://www.pangujiexi.cc/jiexi.php?url=]' },
+      { label: '神哥', value: 'https://json.ovvo.pro/jx.php?url=' },
+      { label: '789解析', value: 'https://jiexi.789jiexi.icu:4433/?url=' },
+      { label: '973解析', value: 'https://jx.973973.xyz/?url=' }
+  
+      // // 精选2：
+      // { label: '8090g解析【推荐】', value: 'https://www.8090g.cn/?url=' },
+      // { label: '八戒解析', value: 'https://jx.m3u8.tv/jiexi/?url=' },
+      // { label: 'CK2', value: 'http://api.ckflv.cn/?url=' },
+      // { label: '虾米解析【推荐】', value: 'https://jx.xmflv.com/?url=' },
+      // { label: '8090解析【备用】', value: 'https://www.8090g.cn/jiexi/?url=' },
+      // { label: 'CK【推荐】', value: 'https://www.ckplayer.vip/jiexi/?url=' },
+      // { label: '夜幕【推荐】', value: 'https://www.yemu.xyz/?url=' },
+      // { label: '4K', value: 'https://jx.4kdv.com/?url=' },
+      // { label: '悟空解析', value: 'https://bd.jx.cn/?url=' },
+      // { label: '爱豆解析【备用】', value: 'https://jx.aidouer.net/?url=' },
+      // { label: '七哥【推荐】', value: 'https://jx.nnxv.cn/tv.php?url=' },
+      // { label: 'OK 解析【备用】', value: 'https://okjx.cc/?url=' },
+      // { label: '唐僧解析', value: 'https://jx.xmflv.cc/?url=' },
+      // { label: 'CHok', value: 'https://www.gai4.com/?url=' },
+      // { label: 'rx2', value: 'http://rxjx.kuanjv.com/allm3u8.php?url=' },
+      // { label: '1717云解析【备用】', value: 'https://www.1717yun.com/jx/ty.php?url=' },
+      // { label: '量子', value: 'https://lziplayer.com/?url=' },
+      // { label: '冰豆', value: 'https://api.qianqi.net/vip/?url=' },
+      // { label: 'yparse 解析【备用】', value: 'https://jx.yparse.com/index.php?url=' },
+      // { label: 'H8', value: 'https://www.h8jx.com/jiexi.php?url=' },
+      // { label: 'PM', value: 'https://www.playm3u8.cn/jiexi.php?url=' },
+      // { label: '速更', value: 'https://wuxiezx.com/player/?url=' },
+      // { label: 'MAO', value: 'https://www.mtosz.com/m3u8.php?url=' },
+      // { label: '解析', value: 'https://ckmov.ccyjjd.com/ckmov/?url=' },
+      // { label: '百域', value: 'https://jx.618g.com/?url=' },
+      // { label: '盘古', value: 'https://www.pangujiexi.cc/jiexi.php?url=' },
+      // { label: '云解析🍃', value: 'https://yparse.ik9.cc/index.php?url=' },
+      // { label: '盘古🍃', value: 'https://www.pangujiexi.com/pangu/?url=' },
+      // { label: '快车解析', value: 'https://jiexi.kczyapi.com/m3u8/?url=' },
+      // { label: 'vip123kan', value: 'http://api.vip123kan.vip/?url=' },
+      // { label: '芒果专用', value: 'https://jx.mangguo.tv/?url=' },
+      // { label: 'ckmov', value: 'https://www.ckmov.vip/api.php?url=' },
+      // { label: '七哥【备用】', value: 'https://jx.mmkv.cn/tv.php?url=' },
+      // { label: 'leduotv', value: 'https://api.leduotv.com/wp-api/ifr.php?isDp=1&vid=' },
+      // { label: 'laisoyiba', value: 'https://laisoyiba.com/mov/s/?sv=3&url=' },
+      // { label: 'ppflv', value: 'https://jx.ppflv.com/?url=' },
+      // { label: 'ldjx', value: 'https://api.ldjx.cc/wp-api/getvodurl.php?token=1001&vid=' },
+      // { label: '52damu', value: 'https://jx.52damu.com/dmjx/jiexi.php?url=' },
+      // { label: 'jiexi', value: 'https://api.jiexi.la/?url=' },
+      // { label: 'administra', value: 'https://www.administratorw.com/video.php?url=' },
+      // { label: '52jiexi', value: 'https://vip.52jiexi.top/?url=' },
+      // { label: 'janan', value: 'https://jiexi.janan.net/jiexi/?url=' },
+      // { label: 'leduotv', value: 'https://api.leduotv.com/wp-api/getvodurl.php?vid=' },
+      // { label: 'jiexi', value: 'https://jiexi.us/?url=' },
+      // { label: 'jhdyw', value: 'https://api.jhdyw.vip/?url=' },
+      // { label: 'mw0', value: 'https://jx.mw0.cc/?url=' },
+      // { label: 'yangtu', value: 'https://jx.yangtu.top?url=' },
+      // { label: 'quankan', value: 'https://jx.quankan.app/?url=' },
+      // { label: 'jiejie', value: 'https://jiejie.uk/' }
+
+      // 精选源：
+      // { label: '八戒解析', value: 'https://jx.m3u8.tv/jiexi/?url=' },
+      // { label: '虾米解析【推荐】', value: 'https://jx.xmflv.com/?url=' },
+      // { label: '七哥', value: 'https://jx.nnxv.cn/tv.php?url=' },
+      // { label: 'CK', value: 'https://www.ckplayer.vip/jiexi/?url=' },
+      // { label: 'CK2', value: 'http://api.ckflv.cn/?url=' },
+      // { label: '夜幕【推荐】', value: 'https://www.yemu.xyz/?url=' },
+      // { label: '8090解析【备用】', value: 'https://www.8090g.cn/jiexi/?url=' },
+      // { label: '悟空解析', value: 'https://bd.jx.cn/?url=' },
+      // { label: '唐僧解析', value: 'https://jx.xmflv.cc/?url=' },
+      // { label: 'OK 解析【备用】', value: 'https://okjx.cc/?url=' },
+      // { label: 'rx2', value: 'http://rxjx.kuanjv.com/allm3u8.php?url=' },
+      // { label: '爱豆解析【备用】', value: 'https://jx.aidouer.net/?url=' },
+      // { label: '4K', value: 'https://jx.4kdv.com/?url=' },
+      // { label: '1717云解析【备用】', value: 'https://www.1717yun.com/jx/ty.php?url=' },
+      // { label: '量子', value: 'https://lziplayer.com/?url=' },
+      // { label: '冰豆', value: 'https://api.qianqi.net/vip/?url=' },
+      // { label: '速更', value: 'https://wuxiezx.com/player/?url=' },
+      // { label: 'CHok', value: 'https://www.gai4.com/?url=' },
+      // { label: 'H8', value: 'https://www.h8jx.com/jiexi.php?url=' },
+      // { label: '解析', value: 'https://ckmov.ccyjjd.com/ckmov/?url=' },
+      // { label: '百域', value: 'https://jx.618g.com/?url=' },
+      // { label: 'PM', value: 'https://www.playm3u8.cn/jiexi.php?url=' },
+      // { label: 'yparse 解析【备用】', value: 'https://jx.yparse.com/index.php?url=' },
+      // { label: '盘古', value: 'https://www.pangujiexi.cc/jiexi.php?url=' },
+      // { label: 'MAO', value: 'https://www.mtosz.com/m3u8.php?url=' },
+      // { label: '云解析🍃', value: 'https://yparse.ik9.cc/index.php?url=' },
+      // { label: '盘古🍃', value: 'https://www.pangujiexi.com/pangu/?url=' },
+      // { label: 'ckmov', value: 'https://www.ckmov.vip/api.php?url=' },
+      // { label: '快车解析', value: 'https://jiexi.kczyapi.com/m3u8/?url=' },
+      // { label: '芒果专用', value: 'https://jx.mangguo.tv/?url=' },
+      // { label: '七哥【备用】', value: 'https://jx.mmkv.cn/tv.php?url=' },
+      // { label: 'jiexi', value: 'https://api.jiexi.la/?url=' },
+      // { label: 'janan', value: 'https://jiexi.janan.net/jiexi/?url=' }
+
+    ];
+    
+
+    const STORAGE_KEY = 'vip-parser-custom';
+    let customOptions = loadCustomParsers();
+    let options = [...baseOptions, ...customOptions];
+
+    const hasChinese = /[\u4e00-\u9fa5]/;
+    const testVideoLink = 'https://v.qq.com';
+    const selectEl = document.getElementById('parser');
+    const urlEl = document.getElementById('url');
+    const player = document.getElementById('player');
+    const playerOverlay = document.getElementById('player-overlay');
+    const playerStatusText = document.getElementById('player-status-text');
+    const playBtn = document.getElementById('play-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const copyBtn = document.getElementById('copy-btn');
+    const checkBtn = document.getElementById('check-btn');
+    const statusSummary = document.getElementById('status-summary');
+    const drawer = document.getElementById('drawer');
+    const drawerClose = document.getElementById('drawer-close');
+    const drawerClose2 = document.getElementById('drawer-close-2');
+    const parserList = document.getElementById('parser-list');
+    const availableCard = document.getElementById('available-card');
+    const availableList = document.getElementById('available-list');
+    const customName = document.getElementById('custom-name');
+    const customUrl = document.getElementById('custom-url');
+    const customAdd = document.getElementById('custom-add');
+    const customList = document.getElementById('custom-list');
+    const previewToggle = document.getElementById('preview-toggle');
+    const previewPanel = document.getElementById('preview-panel');
+    const previewOptions = document.getElementById('preview-options');
+    const previewGrid = document.getElementById('preview-grid');
+    const previewStart = document.getElementById('preview-start');
+    const previewCount = document.getElementById('preview-count');
+
+    let parserStatus = {};
+    let isChecking = false;
+    let hasChecked = false;
+    let overlayTimer = null;
+    let previewExpanded = false;
+    let previewGroups = [];
+    let previewGroupIndex = 0;
+
+    function init() {
+      document.getElementById('current-year').textContent = `© 2019 - ${new Date().getFullYear()}`;
+      renderSelect();
+      playBtn.addEventListener('click', handlePlay);
+      clearBtn.addEventListener('click', handleClear);
+      copyBtn.addEventListener('click', handleCopy);
+      checkBtn.addEventListener('click', () => { openDrawer(); checkAll(); });
+      drawerClose.addEventListener('click', closeDrawer);
+      drawerClose2.addEventListener('click', closeDrawer);
+      customAdd.addEventListener('click', addCustomParser);
+      previewToggle.addEventListener('click', togglePreviewPanel);
+      previewStart.addEventListener('click', startPreview);
+      renderPreviewPicker();
+      renderCustomList();
+      player.addEventListener('load', () => {
+        if (player.src === 'about:blank') { hideOverlay(); return; }
+        clearOverlayTimer();
+        showOverlay('加载完成，如无法播放可尝试切换线路', 'ok');
+        setTimeout(() => hideOverlay(), 1200);
+      });
+    }
+
+    function handlePlay() {
+      const url = urlEl.value.trim();
+      if (!url) return alert('请先填写视频链接');
+      if (hasChinese.test(url)) return alert('链接包含中文字符，请使用完整的 https 开头地址');
+      const base = selectEl.value;
+      showOverlay('正在解析并加载视频...', '');
+      clearOverlayTimer();
+      overlayTimer = setTimeout(() => {
+        showOverlay('加载超时，可能不可用，请尝试切换线路', 'warn');
+      }, 8000);
+      player.src = `${base}${url}`;
+    }
+
+    async function handleCopy() {
+      const current = player.src;
+      if (!current || current === 'about:blank') {
+        alert('请先输入链接并点击播放再复制');
+        return;
+      }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(current);
+        } else {
+          const textarea = document.createElement('textarea');
+          textarea.value = current;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+        }
+        alert('已复制当前播放链接，可在其它浏览器粘贴打开（部分接口可能仍受跨域/登录限制）');
+      } catch (err) {
+        alert('复制失败，请手动复制地址栏中的播放链接');
+      }
+    }
+
+    function showOverlay(message, type = '') {
+      playerStatusText.textContent = message;
+      playerStatusText.className = `player-msg ${type}`.trim();
+      playerOverlay.classList.remove('hide');
+    }
+
+    function hideOverlay() {
+      playerOverlay.classList.add('hide');
+    }
+
+    function clearOverlayTimer() {
+      if (overlayTimer) {
+        clearTimeout(overlayTimer);
+        overlayTimer = null;
+      }
+    }
+
+    function renderSelect() {
+      const current = selectEl.value;
+      selectEl.innerHTML = options.map((o, i) => `<option value="${o.value}" ${(!current && i === 0) || current === o.value ? 'selected' : ''}>${o.label}</option>`).join('');
+      if (current && options.every(o => o.value !== current)) {
+        selectEl.value = options[0]?.value || '';
+      }
+    }
+
+    function getPreviewCandidates() {
+      if (hasChecked) {
+        return options.filter(o => parserStatus[o.value] === 'reachable');
+      }
+      return options;
+    }
+
+    function renderPreviewPicker() {
+      const list = getPreviewCandidates();
+      previewGroups = [];
+      for (let i = 0; i < list.length; i += 6) {
+        previewGroups.push(list.slice(i, i + 6));
+      }
+      if (previewGroupIndex >= previewGroups.length) previewGroupIndex = previewGroups.length ? previewGroups.length - 1 : 0;
+      if (!previewGroups.length) {
+        previewOptions.innerHTML = '<span class="note" style="margin:0;">暂无可用分组（请先检测或无可用线路）</span>';
+        previewGrid.innerHTML = '';
+        updatePreviewCount();
+        highlightPreviewGroups();
+        return;
+      }
+      previewOptions.innerHTML = previewGroups.map((group, idx) => {
+        const start = idx * 6 + 1;
+        const end = start + group.length - 1;
+        const active = idx === previewGroupIndex ? 'active' : '';
+        return `<label class="preview-group ${active}" data-idx="${idx}"><input type="radio" name="preview-group" ${active ? 'checked' : ''}/> 第${start}-${end}条</label>`;
+      }).join('');
+      previewOptions.querySelectorAll('.preview-group').forEach(label => {
+        label.addEventListener('click', () => {
+          previewGroupIndex = Number(label.dataset.idx);
+          updatePreviewCount();
+          highlightPreviewGroups();
+        });
+      });
+      updatePreviewCount();
+      highlightPreviewGroups();
+    }
+
+    function highlightPreviewGroups() {
+      previewOptions.querySelectorAll('.preview-group').forEach(label => {
+        label.classList.toggle('active', Number(label.dataset.idx) === previewGroupIndex);
+        const input = label.querySelector('input[type="radio"]');
+        if (input) input.checked = Number(label.dataset.idx) === previewGroupIndex;
+      });
+    }
+
+    function updatePreviewCount() {
+      const total = previewGroups.length;
+      const current = total ? previewGroupIndex + 1 : 0;
+      previewCount.textContent = `${current}/${total} 组`;
+    }
+
+    function togglePreviewPanel() {
+      previewExpanded = !previewExpanded;
+      previewPanel.classList.toggle('hide', !previewExpanded);
+      previewToggle.textContent = previewExpanded ? '收起' : '展开';
+    }
+
+    function startPreview() {
+      const url = urlEl.value.trim();
+      if (!url) return alert('请先填写视频链接再预览');
+      if (hasChinese.test(url)) return alert('链接包含中文字符，请使用完整的 https 地址');
+      if (!previewGroups.length) return alert('暂无可用分组');
+      previewGrid.innerHTML = '';
+      const group = previewGroups[previewGroupIndex] || [];
+      group.forEach(option => {
+        previewGrid.appendChild(buildPreviewCard(option, url));
+      });
+    }
+
+    function buildPreviewCard(option, url) {
+      const wrap = document.createElement('div');
+      wrap.className = 'preview-item';
+      wrap.innerHTML = `
+        <div class="preview-meta">
+          <span class="preview-title">${option.label}</span>
+          <span class="preview-pill" data-role="pill">加载中</span>
+        </div>
+        <div class="preview-frame"><iframe allowfullscreen allowtransparency></iframe></div>
+        <div class="preview-meta" style="margin-top:8px;">
+          <span class="note" style="margin:0;">可用即点击设为主播放器</span>
+          <button class="btn-primary btn-small" data-role="use">用此源播放</button>
+        </div>
+      `;
+      const iframe = wrap.querySelector('iframe');
+      const pill = wrap.querySelector('[data-role="pill"]');
+      const btn = wrap.querySelector('[data-role="use"]');
+      const timer = setTimeout(() => {
+        pill.textContent = '加载超时';
+        pill.className = 'preview-pill warn';
+      }, 7000);
+      iframe.addEventListener('load', () => {
+        clearTimeout(timer);
+        pill.textContent = '可预览';
+        pill.className = 'preview-pill ok';
+      });
+      iframe.src = `${option.value}${url}`;
+      btn.addEventListener('click', () => {
+        selectEl.value = option.value;
+        handlePlay();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      return wrap;
+    }
+
+    function loadCustomParsers() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(parsed)) return parsed.filter(p => p.label && p.value);
+      } catch (e) {
+        return [];
+      }
+      return [];
+    }
+
+    function saveCustomParsers(list) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    }
+
+    function addCustomParser() {
+      const name = customName.value.trim();
+      const url = customUrl.value.trim();
+      if (!name || !url) {
+        alert('请填写名称和接口地址');
+        return;
+      }
+      if (!/^https?:\/\//i.test(url)) {
+        alert('接口地址需以 http 或 https 开头');
+        return;
+      }
+      if (!url.includes('url')) {
+        alert('接口地址应包含 url 参数占位，如 ?url=');
+        return;
+      }
+      if (customOptions.some(o => o.label === name || o.value === url)) {
+        alert('已存在同名或相同地址的自定义线路');
+        return;
+      }
+      customOptions.push({ label: name, value: url });
+      saveCustomParsers(customOptions);
+      syncOptions();
+      customName.value = '';
+      customUrl.value = '';
+      alert('已添加并保存在本地');
+    }
+
+    function removeCustom(value) {
+      customOptions = customOptions.filter(o => o.value !== value);
+      saveCustomParsers(customOptions);
+      delete parserStatus[value];
+      syncOptions();
+    }
+
+    function renderCustomList() {
+      if (!customOptions.length) {
+        customList.innerHTML = '<span class="note" style="margin:0;">暂无自定义线路</span>';
+        return;
+      }
+      customList.innerHTML = customOptions.map(o => `
+        <div class="custom-row">
+          <div>
+            <div class="name">${o.label}</div>
+            <div class="url">${o.value}</div>
+          </div>
+          <button class="btn-ghost" data-value="${o.value}">删除</button>
+        </div>
+      `).join('');
+      customList.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => removeCustom(btn.dataset.value));
+      });
+    }
+
+    function syncOptions() {
+      options = [...baseOptions, ...customOptions];
+      options.forEach(o => { if (!parserStatus[o.value]) parserStatus[o.value] = 'idle'; });
+      renderSelect();
+      renderPreviewPicker();
+      renderCustomList();
+      renderStatus();
+    }
+
+    function handleClear() {
+      urlEl.value = '';
+      player.src = 'about:blank';
+      clearOverlayTimer();
+      hideOverlay();
+    }
+
+    function openDrawer() {
+      drawer.classList.add('active');
+      drawerClose.style.display = 'inline-flex';
+    }
+    function closeDrawer() {
+      drawer.classList.remove('active');
+      drawerClose.style.display = 'none';
+    }
+
+    async function checkParserAvailability(base) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      const target = `${base}${encodeURIComponent(testVideoLink)}`;
+      try {
+        await fetch(target, { method: 'GET', mode: 'no-cors', cache: 'no-store', signal: controller.signal });
+        return 'reachable';
+      } catch (err) {
+        if (err.name === 'AbortError') return 'timeout';
+        return 'unreachable';
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    async function checkAll() {
+      if (isChecking) return;
+      isChecking = true;
+      parserStatus = Object.fromEntries(options.map(o => [o.value, 'checking']));
+      renderStatus();
+      const results = await Promise.all(options.map(async o => [o.value, await checkParserAvailability(o.value)]));
+      parserStatus = Object.fromEntries(results);
+      isChecking = false;
+      hasChecked = true;
+      renderStatus();
+    }
+
+    function renderStatus() {
+      // summary chips
+      const counts = { reachable: 0, timeout: 0, unreachable: 0, idle: 0, checking: 0 };
+      options.forEach(o => { counts[parserStatus[o.value] || 'idle'] += 1; });
+      statusSummary.innerHTML = `
+        <span class="chip ok">可用 ${counts.reachable}</span>
+        <span class="chip warn">超时 ${counts.timeout}</span>
+        <span class="chip bad">不可用 ${counts.unreachable}</span>
+        <span class="chip">检测中 ${counts.checking}</span>
+        <span class="chip idle">未检 ${counts.idle}</span>
+      `;
+      // list
+      parserList.innerHTML = options.map(o => {
+        const st = parserStatus[o.value] || 'idle';
+        return `<div class="row"><span class="name">${o.label}</span><span class="status ${st}">${statusText(st)}</span></div>`;
+      }).join('');
+      checkBtn.disabled = isChecking;
+      checkBtn.textContent = isChecking ? '检测中…' : '检测解析源';
+      if (!hasChecked) {
+        availableCard.classList.add('hide');
+      } else {
+        availableCard.classList.remove('hide');
+        renderAvailable();
+      }
+      renderPreviewPicker();
+    }
+
+    function renderAvailable() {
+      const reachable = options.filter(o => parserStatus[o.value] === 'reachable');
+      if (isChecking) {
+        availableList.innerHTML = '<span class="note" style="margin:0;">正在检测，可用线路将出现在这里</span>';
+        return;
+      }
+      if (!reachable.length) {
+        availableList.innerHTML = '<span class="note" style="margin:0;">暂无可用线路，可尝试更换接口或重试检测</span>';
+        return;
+      }
+      availableList.innerHTML = reachable.map(o => `<button class="chip-select" data-value="${o.value}">${o.label}</button>`).join('');
+      availableList.querySelectorAll('.chip-select').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectEl.value = btn.dataset.value;
+          highlightSelected(btn.dataset.value);
+        });
+      });
+      highlightSelected(selectEl.value);
+    }
+
+    function highlightSelected(value) {
+      availableList.querySelectorAll('.chip-select').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.value === value);
+      });
+    }
+
+    function statusText(st) {
+      switch (st) {
+        case 'reachable': return 'reachable 可用';
+        case 'checking': return 'checking 检测中';
+        case 'timeout': return 'timeout 超时/跨域';
+        case 'unreachable': return 'unreachable 不可用';
+        default: return 'idle 未检测';
+      }
+    }
+
+    init();
+    renderStatus();
+  </script>
+</body>
 </html>
